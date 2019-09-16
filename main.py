@@ -1,46 +1,23 @@
 from datareader import DataSet
+import sys
 
 data = DataSet()
 
-with open("./data/wili-2018/x_train.txt", 'r') as f:
-    fullthing = f.read()
+done = set()
+latin = set()
+for _ in range(10):#len(data.paragraphs)):
+    batch = data.get_next_batch(1)
+    print(batch[0][0])
+    print(batch[1][0])
+    i = 'c'
+    while i[0].lower() not in 'yn':
+        print("latin? (y/n)")
+        i = sys.stdin.readline()
+    if i[0].lower() == 'y':
+        latin.add(batch[1][0])
+    done.add(batch[1][0])
 
-alphas=0
-nonalphas=0
-chars = set(fullthing)
-for c in chars:
-    if c.isalpha():
-        alphas+=1
-    else:
-        nonalphas+=1
-
-print("For the full training data:")
-print("Number of paragraphs:", len(data.paragraphs))
-print("Number of unique words:", len(set(fullthing.split())))
-print("Number of unique characters:", len(set(fullthing)))
-print(f"Of which {alphas} alphabetical and {nonalphas} a form of interpunction")
-print("Number of languages:", len(data.languages))
-
-
-dutch = []
-for _ in range(500):
-    dutch.append(data.get_next_batch(1, ['nld'])[0][0])
-fullthing = "".join(dutch)[:-1]
-
-alphas=0
-nonalphas=0
-chars = set(fullthing)
-for c in chars:
-    if c.isalpha():
-        alphas+=1
-    else:
-        nonalphas+=1
-print("\n\nFor dutch paragraphs only:")
-print("Number of paragraphs:", len(fullthing.split('\n')))
-print("Number of unique words:", len(set(fullthing.split())))
-print("Number of unique characters:", len(set(fullthing)))
-print(f"Of which {alphas} alphabetical and {nonalphas} a form of interpunction")
-print("Number of languages:", len(data.languages))
-
-print("\n\nAll dutch characters:")
-print(set(fullthing))
+with open("latinlangs.txt", 'w') as f:
+    for lan in latin:
+        f.write(lan)
+        f.write('\n')
