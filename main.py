@@ -5,7 +5,7 @@ data = DataSet()
 
 done = set()
 latin = set()
-for _ in range(10):#len(data.paragraphs)):
+for _ in range(len(data.paragraphs)):
     batch = data.get_next_batch(1)
     print(batch[0][0])
     print(batch[1][0])
