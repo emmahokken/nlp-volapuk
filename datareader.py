@@ -1,19 +1,29 @@
 import random
 
 class DataSet:
-    def __init__(self, xfile="./data/wili-2018/x_train.txt",
-                       yfile="./data/wili-2018/y_train.txt"):
+    def __init__(self, xfile="../data/wili-2018/x_train.txt",
+                       yfile="../data/wili-2018/y_train.txt"):
         self.par2lan = {}
         self.languages = set()
         self.paragraphs = []
         self.epoch_index = 0
-        with open(xfile, 'r') as xf:
+        with open(xfile, 'r') as xf, open('latinlangs.txt', 'r') as latinlangs:
+
+            # Read in latin languages and strip
+            readlatinlangs = latinlangs.readlines()
+            readlatinlangs = [lan.strip() for lan in readlatinlangs]
+
             with open(yfile, 'r') as yf:
                 for paragraph, label in zip(xf, yf):
                     label = label.rstrip()
-                    self.languages.add(label)
-                    self.par2lan[paragraph] = label
-                    self.paragraphs.append(paragraph)
+
+                    if label in readlatinlangs:
+                        # print(label)
+                        self.languages.add(label)
+                        self.par2lan[paragraph] = label
+                        self.paragraphs.append(paragraph)
+
+
         print("data reading complete")
 
     def get_next_batch(self, batch_size, legal_langs=None):
