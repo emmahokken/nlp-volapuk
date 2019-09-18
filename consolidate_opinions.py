@@ -19,7 +19,7 @@ def consolidate():
             for s in [emma, adriaan, toby]:
                 if lan in s:
                     c+=1
-            if c > 1:
+            if c > 2:
                 f.write(lan)
 
 def latin_languages():
