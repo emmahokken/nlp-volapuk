@@ -23,10 +23,11 @@ class DataSet:
                         self.par2lan[paragraph] = label
                         self.paragraphs.append(paragraph)
 
-        
+
         self.char2int, self.par2lan = self.parse_chars()
+        self.lan2int = self.parse_lan()
         print("data reading complete")
-    
+
 
     def parse_chars(self, cutoff=1000):
         # chars = [char for par in data.paragraphs for char in par]
@@ -58,6 +59,13 @@ class DataSet:
         for i, (_, char) in enumerate(charsandcounts):
             char2int[char] = i
         return char2int, newpar2lan
+
+    def parse_lan(self):
+        lan2int = {}
+
+        for i, lan in enumerate(self.languages):
+            lan2int[lan] = i
+        return lan2int
 
     def get_next_batch(self, batch_size, legal_langs=None):
         batch = []

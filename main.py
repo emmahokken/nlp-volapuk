@@ -9,7 +9,6 @@ from collections import Counter
 def train(args):
 
     data = DataSet()
-    parse_chars(data)
 
     batch = data.get_next_batch(25)
 
