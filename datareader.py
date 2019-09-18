@@ -18,11 +18,9 @@ class DataSet:
                     label = label.rstrip()
 
                     if label in readlatinlangs:
-                        # print(label)
                         self.languages.add(label)
                         self.par2lan[paragraph] = label
                         self.paragraphs.append(paragraph)
-
 
         print("data reading complete")
 

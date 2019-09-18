@@ -30,22 +30,26 @@ def one_hot_encode(batch):
     pass
 
 def parse_chars(data):
-    char2lan = dict()
+    # chars = [char for par in data.paragraphs for char in par]
+    # chars_set = set(chars)
 
-    # print('langjes', data.languages)
-    print('partjes', len(data.paragraphs))
+    final_chars = ['☃']
+    counts = dict()
+    # chars = []
+    for par in data.paragraphs:
+        for char in par:
+            try:
+                counts[char] += 1
+            except:
+                counts[char] = 0
+            if counts[char] > 10000 and char not in final_chars:
+                final_chars.append(char)
 
-    chars = [char for par in data.paragraphs for char in par]
-    chars_set = set(chars)
-    final_chars = []
     # counts = [chars.count(char) for char in chars_set]
-    for i, char in enumerate(chars_set):
-        print(i)
-        counting = chars.count(char)
-        if counting > 10:
-            final_chars.append(char)
-        if i == 250:
-            break
+    # for char in chars_set:
+    #     counting = chars.count(char)
+    #     if counting > 100:
+    #         final_chars.append(char)
 
     print(final_chars)
     print(len(final_chars))
