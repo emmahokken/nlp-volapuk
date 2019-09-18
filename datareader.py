@@ -1,4 +1,5 @@
 import random
+from collections import Counter
 
 class DataSet:
     def __init__(self, xfile="../data/wili-2018/x_train.txt",
@@ -22,7 +23,41 @@ class DataSet:
                         self.par2lan[paragraph] = label
                         self.paragraphs.append(paragraph)
 
+        
+        self.char2int, self.par2lan = self.parse_chars()
         print("data reading complete")
+    
+
+    def parse_chars(self, cutoff=1000):
+        # chars = [char for par in data.paragraphs for char in par]
+        # chars_set = set(chars)
+
+        unk_char = '☃'
+        all_real_chars = set()
+        all_real_chars.add(unk_char)
+
+        counts = Counter(''.join(self.paragraphs))
+        for char in counts:
+            if counts[char] >= cutoff:
+                all_real_chars.add(char)
+
+        newpar2lan = {}
+        for i, par in enumerate(self.paragraphs):
+            newpar = []
+            for char in par:
+                if char in all_real_chars:
+                    newpar.append(char)
+                else:
+                    newpar.append(unk_char)
+            self.paragraphs[i] = ''.join(newpar)
+            newpar2lan[self.paragraphs[i]] = self.par2lan[par]
+
+        charsandcounts = [(counts[char], char) for char in all_real_chars]
+        charsandcounts.sort(reverse=True)
+        char2int = {}
+        for i, (_, char) in enumerate(charsandcounts):
+            char2int[char] = i
+        return char2int, newpar2lan
 
     def get_next_batch(self, batch_size, legal_langs=None):
         batch = []
@@ -39,5 +74,4 @@ class DataSet:
 
 if __name__ == '__main__':
     data = DataSet()
-    for i in range(100):
-        print(i, data.get_next_batch(1, {'swa', 'rus', 'nld'}))
+    print(data.char2int)
