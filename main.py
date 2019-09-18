@@ -3,7 +3,7 @@ import sys
 import numpy as np
 import torch
 import argparse
-
+from collections import Counter
 
 
 def train(args):
@@ -29,30 +29,33 @@ def accuracy(predictions, targets):
 def one_hot_encode(batch):
     pass
 
-def parse_chars(data):
+def parse_chars(data, cutoff=1000):
     # chars = [char for par in data.paragraphs for char in par]
     # chars_set = set(chars)
 
-    final_chars = ['☃']
-    counts = dict()
-    # chars = []
-    for par in data.paragraphs:
+    unk_char = '☃'
+    all_real_chars = set()
+    all_real_chars.add(unk_char)
+    counts = Counter(''.join(data.paragraphs))
+    for char in counts:
+        if counts[char] >= cutoff:
+            all_real_chars.add(char)
+
+    for i, par in enumerate(data.paragraphs):
+        newpar = []
         for char in par:
-            try:
-                counts[char] += 1
-            except:
-                counts[char] = 0
-            if counts[char] > 10000 and char not in final_chars:
-                final_chars.append(char)
+            if char in all_real_chars:
+                newpar.append(char)
+            else:
+                newpar.append(unk_char)
+        data.paragraphs[i] = ''.join(newpar) 
 
-    # counts = [chars.count(char) for char in chars_set]
-    # for char in chars_set:
-    #     counting = chars.count(char)
-    #     if counting > 100:
-    #         final_chars.append(char)
-
-    print(final_chars)
-    print(len(final_chars))
+    charsandcounts = [(counts[char], char) for char in all_real_chars]
+    charsandcounts.sort()
+    char2int = {}
+    for i, (char, _) in enumerate(charsandcounts):
+        char2int[char] = i
+    return char2int
 
 if __name__ == "__main__":
 
