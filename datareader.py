@@ -2,8 +2,8 @@ import random
 from collections import Counter
 
 class DataSet:
-    def __init__(self, xfile="../data/wili-2018/x_train.txt",
-                       yfile="../data/wili-2018/y_train.txt"):
+    def __init__(self, xfile="data/wili-2018/x_train.txt",
+                       yfile="data/wili-2018/y_train.txt"):
         self.par2lan = {}
         self.languages = set()
         self.paragraphs = []

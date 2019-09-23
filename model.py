@@ -6,7 +6,7 @@ import numpy as np
 class modelRNN(nn.Module):
 
     def __init__(self, input_size, hidden_size, num_layers, device='cpu'):
-        super(modelRNN, self)__init__()
+        super(modelRNN, self).__init__()
 
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -17,8 +17,7 @@ class modelRNN(nn.Module):
                             num_layers=num_layers,
                             nonlinearity='tanh',
                             bias=True,
-                            batch_first=False,
-                            device=device)
+                            batch_first=False)
 
     def forward(self, x):
         # have to do something with hidden?

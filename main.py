@@ -4,20 +4,69 @@ import numpy as np
 import torch
 import argparse
 from collections import Counter
+from model import modelRNN
+import torch.nn as nn
+
 
 
 def train(args):
 
     data = DataSet()
+    # parse_chars(data)
+
+    # HARDCODED WATCH THIS SPACE
+    model = modelRNN(217, args.num_hidden, args.num_layers)
+    loss = nn.CrossEntropyLoss()
 
     batch = data.get_next_batch(25)
 
     for _ in range(args.training_steps):
 
+        # get batch and targets, however not in correct format
         batch, targets = data.get_next_batch(args.batch_size)
+        list_of_one_hot_X = []
 
-        # Create one hot array of characters?
-        break
+        # Convert batch to X
+        for par in batch:
+            # We cutoff to only use the final 140 characters at the end.
+            # This is done, as the first will have a lot of meaningless information, such as pronunciaton
+            # This way it is easier for the batches to be read, as well as the bias for the length of the text to be removed.
+            par = par[-140:]
+            x = []
+            for char in par:
+                try:
+                    x.append(data.char2int[char])
+                except:
+                    x.append(data.char2int['☃'])
+            x_tensor = torch.tensor(x).type(torch.LongTensor).view(-1, 1)
+            x_one_hot = torch.zeros(x_tensor.size()[0], len(data.char2int)).scatter_(1, x_tensor, 1)
+            list_of_one_hot_X.append(x_one_hot)
+
+        X = torch.stack(list_of_one_hot_X)
+
+        # convert targets to Y
+        languages = list(data.languages)
+        languages.sort()
+        y = []
+        for target in targets:
+            y.append(languages.index(target))
+        y_tensor = torch.tensor(y).type(torch.LongTensor).view(-1, 1)
+        Y = torch.zeros(y_tensor.size()[0], len(data.languages)).scatter_(1, y_tensor, 1)
+
+
+        print('X', X.shape)
+        print('Y', Y.shape)
+        # print(Y.shape)
+
+
+        out, hidden = model.forward(X)
+
+        print('\n\n',out.shape)
+        print(Y.shape, '\n\n')
+        output = loss(out, Y)
+
+        output.backward()
+
 
 def accuracy(predictions, targets):
     pred = np.argmax(predictions, axis=1)
@@ -33,6 +82,7 @@ if __name__ == "__main__":
     # Model params
     parser.add_argument('--input_dim', type=int, default=1, help='Dimensionality of input sequence')
     parser.add_argument('--num_hidden', type=int, default=128, help='Number of hidden units in the model')
+    parser.add_argument('--num_layers', type=int, default=2, help='Number of layers in the model')
 
     parser.add_argument('--batch_size', type=int, default=128, help='Number of examples to process in a batch')
     parser.add_argument('--training_steps', type=int, default=128, help='Number of training steps')
