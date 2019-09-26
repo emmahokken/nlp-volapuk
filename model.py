@@ -19,8 +19,11 @@ class modelRNN(nn.Module):
                             bias=True,
                             batch_first=False)
 
+        self.lin = nn.Linear(hidden_size, 146)
+
     def forward(self, x):
         # have to do something with hidden?
-        out = self.rnn(x)
+        out, hidden = self.rnn(x)
+        out = self.lin(out)
 
-        return out
+        return out, hidden

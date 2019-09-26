@@ -18,9 +18,8 @@ def train(args):
     model = modelRNN(217, args.num_hidden, args.num_layers)
     loss = nn.CrossEntropyLoss()
 
-    batch = data.get_next_batch(25)
 
-    for _ in range(args.training_steps):
+    for i in range(args.training_steps):
 
         # get batch and targets, however not in correct format
         batch, targets = data.get_next_batch(args.batch_size)
@@ -61,16 +60,22 @@ def train(args):
 
         out, hidden = model.forward(X)
 
-        print('\n\n',out.shape)
-        print(Y.shape, '\n\n')
-        output = loss(out, Y)
+        # print('\n\n',out.shape)
+        # print(Y.shape, '\n\n')
+        #
+        output = loss(out, Y.long())
 
         output.backward()
 
+        if i % 100 == 0:
+            print(output.item())
+            acc = accuracy(out.detach().numpy(), Y)
+
+
 
 def accuracy(predictions, targets):
-    pred = np.argmax(predictions, axis=1)
-    tar = np.argmax(targets, axis=1)
+    pred = torch.argmax(predictions, axis=1)
+    tar = torch.argmax(targets, axis=1)
 
     return (pred - tar).mean()
 
