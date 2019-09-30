@@ -7,6 +7,7 @@ class DataSet:
         self.par2lan = {}
         self.languages = set()
         self.paragraphs = []
+        self.lan2pars = {}
         self.epoch_index = 0
         with open(xfile, 'r') as xf, open('latinlangs.txt', 'r') as latinlangs:
 
@@ -23,8 +24,12 @@ class DataSet:
                         self.par2lan[paragraph] = label
                         self.paragraphs.append(paragraph)
 
+                        try:
+                            self.lan2pars[label].append(paragraph)
+                        except:
+                            self.lan2pars[label] = [paragraph]
 
-        self.char2int, self.par2lan = self.parse_chars()
+        self.char2int, self.par2lan, self.all_real_chars = self.parse_chars()
         self.lan2int = self.parse_lan()
         print("data reading complete")
 
@@ -58,7 +63,7 @@ class DataSet:
         char2int = {}
         for i, (_, char) in enumerate(charsandcounts):
             char2int[char] = i
-        return char2int, newpar2lan
+        return char2int, newpar2lan, all_real_chars
 
     def parse_lan(self):
         lan2int = {}

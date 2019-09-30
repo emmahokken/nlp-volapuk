@@ -39,10 +39,6 @@ def baseline(args):
         if pred_lan == data.par2lan[pars]:
             correct += 1
 
-        print('\n\npredicted')
-        print(pred_lan)
-        print('actual', data.par2lan[pars])
-
     accuracy = correct / len(data.paragraphs)
 
     print("Accuracy:", accuracy)

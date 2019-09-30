@@ -17,13 +17,28 @@ class modelRNN(nn.Module):
                             num_layers=num_layers,
                             nonlinearity='tanh',
                             bias=True,
-                            batch_first=False)
+                            batch_first=True)
 
-        self.lin = nn.Linear(hidden_size, 146)
+        # self.lstm = nn.LSTM(input_size=input_size,
+        #                     hidden_size=hidden_size,
+        #                     num_layers=num_layers,
+        #                     bidirectional=False,
+        #                     batch_first=True)
+
+        self.lin = nn.Linear(hidden_size, hidden_size)
+        self.softmax = nn.Softmax()
+
+        # print("inside model init\n")
+        # print('num_layers:', num_layers)
+        # print('input_size:', input_size)
+        # print('hidden_size:', hidden_size)
+
 
     def forward(self, x):
+        # print('x size', x.size())
+
         # have to do something with hidden?
         out, hidden = self.rnn(x)
-        out = self.lin(out)
+        out = self.softmax(self.lin(out))
 
         return out, hidden
