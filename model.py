@@ -23,7 +23,11 @@ class modelRNN(nn.Module):
 
     def forward(self, x):
         # have to do something with hidden?
+        print('...',x[:,0,:].shape)
+        print('modelx',x.shape)
         out, hidden = self.rnn(x)
         out = self.lin(out)
+        print('modelout',out.shape)
+        print('modelhid',hidden.shape)
 
         return out, hidden
