@@ -5,6 +5,7 @@ import torch
 import argparse
 from collections import Counter
 from model import modelRNN
+from vanille_rnn import VanillaRNN
 import torch.nn as nn
 
 def retrain(args):
@@ -60,7 +61,12 @@ def train(args):
     # parse_chars(data)
 
     # HARDCODED WATCH THIS SPACE
-    model = modelRNN(217, args.num_hidden, args.num_layers)
+    # model = modelRNN(217, args.num_hidden, args.num_layers)
+    model = VanillaRNN(217, args.num_hidden, args.num_layers, 146, args.batch_size)
+    model = VanillaRNN(140, 217, args.num_hidden, 146, args.batch_size)
+    model = LSTM(14, 217, args.num_hidden, 146, args.batch_size)
+    # model = nn.LSTM(217, 146, 2)
+    model = VolapukModel(20, 217, args.num_hidden, 146, args.batch_size)
     loss = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate)
 
@@ -86,7 +92,8 @@ def train(args):
             x_one_hot = torch.zeros(x_tensor.size()[0], len(data.char2int)).scatter_(1, x_tensor, 1)
             list_of_one_hot_X.append(x_one_hot)
 
-        X = torch.stack(list_of_one_hot_X)
+        print(X)
+        print(X.shape)
 
         # convert targets to Y
         languages = list(data.languages)
@@ -116,6 +123,8 @@ def train(args):
 
         # output = torch.autograd.Variable(output, requires_grad=True)
         output.backward()
+        optimizer.step()
+
         optimizer.step()
 
         if i % 100 == 0:
