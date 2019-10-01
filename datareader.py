@@ -45,7 +45,6 @@ class DataSet:
                         except:
                             self.lan2pars[label] = [paragraph]
 
-        self.languages = sorted(list(self.languages))
         self.char2int, self.par2lan, self.all_real_chars, self.all_bigram_chars = self.parse_chars()
         self.lan2int = self.parse_lan()
         print("data reading complete")
@@ -104,6 +103,19 @@ class DataSet:
                 batch.append(par)
                 targets.append(self.par2lan[par])
             self.epoch_index = (self.epoch_index+1)%len(self.paragraphs)
+            if not self.epoch_index:
+                random.shuffle(self.paragraphs)
+        return batch, targets
+
+    def get_next_test_batch(self, batch_size, legal_langs=None):
+        batch = []
+        targets = []
+        while len(batch) < batch_size:
+            par = self.test_paragraphs[self.epoch_index]
+            if not legal_langs or self.test_par2lan[par] in legal_langs:
+                batch.append(par)
+                targets.append(self.test_par2lan[par])
+            self.epoch_index = (self.epoch_index+1)%len(self.test_paragraphs)
             if not self.epoch_index:
                 random.shuffle(self.paragraphs)
         return batch, targets
