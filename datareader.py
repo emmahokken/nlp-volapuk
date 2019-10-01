@@ -3,19 +3,23 @@ from collections import Counter
 
 class DataSet:
     def __init__(self, xfile="../data/wili-2018/x_train.txt",
-                       yfile="../data/wili-2018/y_train.txt"):
+                       yfile="../data/wili-2018/y_train.txt",
+                       x_test="../data/wili-2018/x_test.txt",
+                       y_test="../data/wili-2018/y_test.txt"):
         self.par2lan = {}
+        self.test_par2lan = {}
         self.languages = set()
+        self.test_paragraphs = []
         self.paragraphs = []
         self.lan2pars = {}
         self.epoch_index = 0
-        with open(xfile, 'r') as xf, open('latinlangs.txt', 'r') as latinlangs:
+        with open(xfile, 'r') as xf, open('latinlangs.txt', 'r') as latinlangs, open(x_test, 'r') as xt:
 
             # Read in latin languages and strip
             readlatinlangs = latinlangs.readlines()
             readlatinlangs = [lan.strip() for lan in readlatinlangs]
 
-            with open(yfile, 'r') as yf:
+            with open(yfile, 'r') as yf, open(y_test, 'r') as yt:
                 for paragraph, label in zip(xf, yf):
                     label = label.rstrip()
 
@@ -29,7 +33,19 @@ class DataSet:
                         except:
                             self.lan2pars[label] = [paragraph]
 
-        self.char2int, self.par2lan, self.all_real_chars = self.parse_chars()
+                for paragraph, label in zip(xt, yt):
+                    label = label.rstrip()
+
+                    if label in readlatinlangs:
+                        self.test_par2lan[paragraph] = label
+                        self.test_paragraphs.append(paragraph)
+
+                        try:
+                            self.lan2pars[label].append(paragraph)
+                        except:
+                            self.lan2pars[label] = [paragraph]
+
+        self.char2int, self.par2lan, self.all_real_chars, self.all_bigram_chars = self.parse_chars()
         self.lan2int = self.parse_lan()
         print("data reading complete")
 
@@ -63,7 +79,13 @@ class DataSet:
         char2int = {}
         for i, (_, char) in enumerate(charsandcounts):
             char2int[char] = i
-        return char2int, newpar2lan, all_real_chars
+
+        all_bigram_chars = []
+        for char1 in sorted(all_real_chars):
+            for char2 in sorted(all_real_chars):
+                all_bigram_chars.append(char1 + char2)
+
+        return char2int, newpar2lan, all_real_chars, all_bigram_chars
 
     def parse_lan(self):
         lan2int = {}

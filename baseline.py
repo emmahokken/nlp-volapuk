@@ -8,7 +8,86 @@ from model import modelRNN
 import torch.nn as nn
 from scipy.spatial import distance
 
-def baseline(args):
+def make_bigram(paragraph, data):
+    bigram = []
+
+    all_bigram_chars = sorted(data.all_bigram_chars)
+
+    for i, char in enumerate(paragraph):
+        # Make sure i + 1 doesn't exceed paragraph length
+        if i + 1 < len(paragraph):
+            if char + paragraph[i + 1] in all_bigram_chars:
+                bigram.append(char + paragraph[i + 1])
+
+    return bigram
+
+
+def bigram_ratio(data):
+
+    chars_ratio = {}
+
+    languages = sorted(data.languages)
+
+    for lan in languages:
+        joined_paragraphs = ' '.join(data.lan2pars[lan])
+        bigrams = make_bigram(joined_paragraphs, data)
+        unk_counter = 0
+
+        counters = np.zeros((len(data.all_bigram_chars)))
+
+        # Count characters from paragraph, add counts to zero array
+        for char in set(bigrams):
+            count = bigrams.count(char)
+            counters[data.all_bigram_chars.index(char)] = count
+        print()
+
+        print(len(bigrams))
+        # Get character ratio
+        chars_ratio[lan] = (counters / len(bigrams)) * 100
+        print(lan)
+        print(sum(chars_ratio[lan]))
+
+    return chars_ratio
+
+def final(args):
+
+    data = DataSet()
+
+    chars_ratio = bigram_ratio(data)
+
+    languages = sorted(data.languages)
+
+    correct = 0
+
+    for pars in data.test_paragraphs:
+        bigram = make_bigram(pars, data)
+
+        counters = np.zeros((len(data.all_bigram_chars)))
+
+        # Count characters from paragraph, add counts to zero array
+        for char in set(bigram):
+            count = bigram.count(char)
+            counters[all_bigram_chars.index(char)] = count
+
+        print('\nbigram length')
+        print(len(bigram))
+        # Get character ratio
+        ratio = (counters / len(bigram)) * 100
+        print('ratio')
+        print(ratio)
+        pred_lan = determine_eucl_dist(ratio, chars_ratio)
+
+        if pred_lan == data.test_par2lan[pars]:
+            correct += 1
+
+        # print('\npred', pred_lan)
+        # print('actual', data.test_par2lan[pars])
+
+    accuracy = correct / len(data.test_paragraphs)
+
+    print("Accuracy:", accuracy)
+
+def unigram_baseline(args):
     data = DataSet()
 
     chars_ratio = get_rations(data)
@@ -18,7 +97,7 @@ def baseline(args):
 
     correct = 0
 
-    for pars in data.paragraphs:
+    for pars in data.test_paragraphs:
         unk_counter = 0
 
         counters = np.zeros((len(all_real_chars)))
@@ -36,10 +115,10 @@ def baseline(args):
 
         pred_lan = determine_eucl_dist(ratio, chars_ratio)
 
-        if pred_lan == data.par2lan[pars]:
+        if pred_lan == data.test_par2lan[pars]:
             correct += 1
 
-    accuracy = correct / len(data.paragraphs)
+    accuracy = correct / len(data.test_paragraphs)
 
     print("Accuracy:", accuracy)
 
@@ -47,7 +126,10 @@ def determine_eucl_dist(ratio, chars_ratio):
     smallest = 9999999
     pred_lan = ''
     for lan in chars_ratio.keys():
-        dist = distance.euclidean(ratio, chars_ratio[lan])
+        try:
+            dist = distance.euclidean(ratio, chars_ratio[lan])
+        except:
+            dist = 100
         if dist < smallest:
             smallest = dist
             pred_lan = lan
@@ -109,7 +191,12 @@ if __name__ == "__main__":
 
     parser.add_argument('--device', type=str, default="cuda:0", help="Training device 'cpu' or 'cuda:0'")
 
+
+    parser.add_argument('--unigram', type=bool, default=False)
     args = parser.parse_args()
 
     # Train the model
-    baseline(args)
+    if args.unigram:
+        unigram_baseline(args)
+    else:
+        final(args)
