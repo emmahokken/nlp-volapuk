@@ -16,6 +16,7 @@ def evaluate(args):
 
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # device = 'cpu'
     print(device)
 
     data = DataSet()
@@ -51,12 +52,14 @@ def evaluate(args):
     for i in tqdm(range(args.training_steps)):
 
         # Get batch and targets, however not in correct format
-        batch, targets = data.get_next_batch(args.batch_size)
+        # batch, targets = data.get_next_batch(args.batch_size)
+        batch, targets = data.get_next_test_batch(args.batch_size)
         list_of_one_hot_X = []
 
         # Convert batch to X
         y = []
         languages = list(data.languages)
+        # print(data.languages)
         for par, target in zip(batch, targets):
             # We cutoff to only use the final 140 characters at the end.
             # This is done, as the first will have a lot of meaningless information, such as pronunciaton
@@ -90,6 +93,9 @@ def evaluate(args):
 
     print(acc_per_lan)
     print(acc)
+
+    for key in acc_per_lan:
+        print(key, acc_per_lan[key].item())
 
 def accuracy(predictions, targets, correct_dict, total_dict):
     _, ind = torch.max(predictions, dim=1)

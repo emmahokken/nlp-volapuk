@@ -45,6 +45,7 @@ class DataSet:
                         except:
                             self.lan2pars[label] = [paragraph]
 
+        self.languages = sorted(list(self.languages))
         self.char2int, self.par2lan, self.all_real_chars, self.all_bigram_chars = self.parse_chars()
         self.lan2int = self.parse_lan()
         print("data reading complete")
