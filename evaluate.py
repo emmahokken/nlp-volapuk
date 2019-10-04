@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import time
 
+import csv
+
 def evaluate(args):
 
 
@@ -89,18 +91,110 @@ def evaluate(args):
         out = model.forward(X, (torch.ones(args.batch_size)*args.batch_size).long())
         acc, correct_dict, total_dict = accuracy(out, Y, correct_dict, total_dict)
 
-        loss = criterion(out, Y)
-        print(loss)
+    lan2language = {}
+    with open('../data/wili-2018/labels.csv', 'r') as f:
+        csv_reader = csv.reader(f, delimiter=';')
+        line_count = 0
+        for row in csv_reader:
+            if line_count == 0:
+                print(f'Column names are {", ".join(row)}')
+                line_count += 1
+            else:
+                if row[1] == 'Swahili (macrolanguage)':
+                    lan2language[row[0]] = 'Swahili'
+                    continue
+                lan2language[row[0]] = row[1]
 
     acc_per_lan = {}
     for lan in data.languages:
-        acc_per_lan[lan] = (total_dict[data.lan2int[lan]] / correct_dict[data.lan2int[lan]]).mean()
+        acc_per_lan[lan2language[lan]] = (total_dict[data.lan2int[lan]] / correct_dict[data.lan2int[lan]]).mean()
 
-    print(acc_per_lan)
-    print(acc)
+    plot_languages(acc_per_lan)
 
-    for key in acc_per_lan:
-        print(key, acc_per_lan[key].item())
+def plot_languages(acc_per_lan):
+    tenners = []
+    twenties = []
+    thirties = []
+    fourties = []
+    fifties = []
+    sixties = []
+    seventies = []
+    eighties = []
+    nineties = []
+    counts = []
+    for i, key in enumerate(acc_per_lan):
+        counts.append(i)
+        if acc_per_lan[key] > 0.90:
+            nineties.append(key)
+        elif acc_per_lan[key] > 0.80:
+            eighties.append(key)
+        elif acc_per_lan[key] > 0.70:
+            seventies.append(key)
+        elif acc_per_lan[key] > 0.60:
+            sixties.append(key)
+        elif acc_per_lan[key] > 0.50:
+            fifties.append(key)
+        elif acc_per_lan[key] > 0.40:
+            fourties.append(key)
+        elif acc_per_lan[key] > 0.30:
+            thirties.append(key)
+        elif acc_per_lan[key] > 0.20:
+            twenties.append(key)
+        elif acc_per_lan[key] > 0.10:
+            tenners.append(key)
+
+    max = 10000
+    min = 50
+
+    for i, lan in enumerate(nineties):
+        lin = np.linspace(min, max * 0.95, len(nineties))
+        plt.text(.902, lin[i], lan)
+    for i, lan in enumerate(eighties):
+        lin = np.linspace(min, max * 0.8, len(eighties))
+        plt.text(.802, lin[i], lan)
+    for i, lan in enumerate(seventies):
+        lin = np.linspace(min, max * 0.7, len(seventies))
+        plt.text(.702, lin[i], lan)
+    for i, lan in enumerate(sixties):
+        lin = np.linspace(min, max * 0.6, len(sixties))
+        plt.text(.602, lin[i], lan)
+    for i, lan in enumerate(fifties):
+        lin = np.linspace(min, max * 0.5, len(fifties))
+        plt.text(.502, lin[i], lan)
+    for i, lan in enumerate(fourties):
+        lin = np.linspace(min, max * 0.4, len(fourties))
+        plt.text(.402, lin[i], lan)
+    for i, lan in enumerate(thirties):
+        lin = np.linspace(min, 1500, len(thirties))
+        plt.text(.302, lin[i], lan)
+    # for i, lan in enumerate(twenties):
+    #     lin = np.linspace(min, 1500, len(twenties))
+    #     plt.text(.202, lin[i], lan)
+    # for i, lan in enumerate(tenners):
+    #     lin = np.linspace(min, 1500, len(tenners))
+    #     plt.text(.102, lin[i], lan)
+
+    filler = np.arange(0.3,1.1,0.1)
+
+    for k in filler:
+        plt.plot([k for i in range(max)], [i for i in range(max)], color='black')
+
+    colours = ['rebeccapurple', 'orange', 'blue', 'red', 'cyan', 'yellow', 'green', 'magenta', 'dodgerblue']
+
+    for j, k in enumerate(filler):
+        try:
+            plt.fill_between([k, filler[j + 1]], 0, max, alpha=0.2, color=colours[j])
+        except:
+            pass
+
+    plt.ylim(0,max)
+    plt.yticks([])
+
+    plt.xlabel("Accuracy")
+    plt.title("Languages in accuracy bins")
+    plt.savefig('acc_per_lan')
+    plt.show()
+
 
 def accuracy(predictions, targets, correct_dict, total_dict):
     _, ind = torch.max(predictions, dim=1)
