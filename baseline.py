@@ -7,20 +7,8 @@ from collections import Counter
 from model import modelRNN
 import torch.nn as nn
 from scipy.spatial import distance
-
-def make_bigram(paragraph, data):
-    bigram = []
-
-    all_bigram_chars = sorted(data.all_bigram_chars)
-
-    for i, char in enumerate(paragraph):
-        # Make sure i + 1 doesn't exceed paragraph length
-        if i + 1 < len(paragraph):
-            if char + paragraph[i + 1] in all_bigram_chars:
-                bigram.append(char + paragraph[i + 1])
-
-    return bigram
-
+from nltk import bigrams
+from tqdm import tqdm
 
 def bigram_ratio(data):
 
@@ -28,29 +16,30 @@ def bigram_ratio(data):
 
     languages = sorted(data.languages)
 
-    for lan in languages:
+    for lan in tqdm(languages):
         joined_paragraphs = ' '.join(data.lan2pars[lan])
-        bigrams = make_bigram(joined_paragraphs, data)
-        unk_counter = 0
+        bigram = list(bigrams(joined_paragraphs))
 
         counters = np.zeros((len(data.all_bigram_chars)))
 
+        bigram_counts = Counter(bigram)
+        summer = 0
+        summ = 0
         # Count characters from paragraph, add counts to zero array
-        for char in set(bigrams):
-            count = bigrams.count(char)
-            counters[data.all_bigram_chars.index(char)] = count
-        print()
+        for bi in set(bigram):
+            bi_list = list(bi)
+            if bi_list[0] not in data.all_real_chars:
+                bi_list[0] = '☃'
+            if bi_list[1] not in data.all_real_chars:
+                bi_list[1] = '☃'
+            bi_str = ''.join(bi_list)
+            counters[data.all_bigram_chars.index(bi_str)] += bigram_counts[bi] / len(bigram)
 
-        print(len(bigrams))
-        # Get character ratio
-        chars_ratio[lan] = (counters / len(bigrams)) * 100
-        print(lan)
-        print(sum(chars_ratio[lan]))
+        chars_ratio[lan] = counters
 
     return chars_ratio
 
 def final(args):
-
     data = DataSet()
 
     chars_ratio = bigram_ratio(data)
@@ -59,22 +48,27 @@ def final(args):
 
     correct = 0
 
-    for pars in data.test_paragraphs:
-        bigram = make_bigram(pars, data)
+    for pars in tqdm(data.test_paragraphs):
+        bigram = list(bigrams(pars))
 
         counters = np.zeros((len(data.all_bigram_chars)))
-
+        bigram_counts = Counter(bigram)
         # Count characters from paragraph, add counts to zero array
-        for char in set(bigram):
-            count = bigram.count(char)
-            counters[all_bigram_chars.index(char)] = count
+        for bi in set(bigram):
+            bi_list = list(bi)
+            if bi_list[0] not in data.all_real_chars:
+                bi_list[0] = '☃'
+            if bi_list[1] not in data.all_real_chars:
+                bi_list[1] = '☃'
+            bi_str = ''.join(bi_list)
+            counters[data.all_bigram_chars.index(bi_str)] += bigram_counts[bi] / len(bigram)
 
-        print('\nbigram length')
-        print(len(bigram))
+        # print('\nbigram length')
+        # print(len(bigram))
         # Get character ratio
         ratio = (counters / len(bigram)) * 100
-        print('ratio')
-        print(ratio)
+        # print('ratio')
+        # print(ratio)
         pred_lan = determine_eucl_dist(ratio, chars_ratio)
 
         if pred_lan == data.test_par2lan[pars]:
@@ -126,10 +120,7 @@ def determine_eucl_dist(ratio, chars_ratio):
     smallest = 9999999
     pred_lan = ''
     for lan in chars_ratio.keys():
-        try:
-            dist = distance.euclidean(ratio, chars_ratio[lan])
-        except:
-            dist = 100
+        dist = distance.euclidean(ratio, chars_ratio[lan])
         if dist < smallest:
             smallest = dist
             pred_lan = lan
