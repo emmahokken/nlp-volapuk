@@ -10,14 +10,22 @@ from scipy.spatial import distance
 
 def make_bigram(paragraph, data):
     bigram = []
-
+    itjes = []
     all_bigram_chars = sorted(data.all_bigram_chars)
 
     for i, char in enumerate(paragraph):
         # Make sure i + 1 doesn't exceed paragraph length
         if i + 1 < len(paragraph):
             if char + paragraph[i + 1] in all_bigram_chars:
+                itjes.append(i)
                 bigram.append(char + paragraph[i + 1])
+            else:
+                print(char + paragraph[i + 1])
+    print('itjes',len(itjes))
+    # print(itjes)
+    for i in range(10000):
+        if i not in itjes:
+            print(i)
 
     return bigram
 
@@ -29,7 +37,7 @@ def bigram_ratio(data):
     languages = sorted(data.languages)
 
     for lan in languages:
-        joined_paragraphs = ' '.join(data.lan2pars[lan])
+        joined_paragraphs = ' '.join(data.lan2pars[lan])[:10000]
         bigrams = make_bigram(joined_paragraphs, data)
         unk_counter = 0
 

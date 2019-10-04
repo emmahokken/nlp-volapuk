@@ -49,6 +49,8 @@ def evaluate(args):
     accuracies = []
     steps = []
 
+    model.eval()
+
     for i in tqdm(range(args.training_steps)):
 
         # Get batch and targets, however not in correct format
@@ -86,6 +88,9 @@ def evaluate(args):
 
         out = model.forward(X, (torch.ones(args.batch_size)*args.batch_size).long())
         acc, correct_dict, total_dict = accuracy(out, Y, correct_dict, total_dict)
+
+        loss = criterion(out, Y)
+        print(loss)
 
     acc_per_lan = {}
     for lan in data.languages:

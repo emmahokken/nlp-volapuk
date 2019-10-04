@@ -8,6 +8,8 @@ class VolapukModel(nn.Module):
 
         super(VolapukModel, self).__init__()
 
+        # self.vocab_size = vocab_size
+
         self.embedding = nn.Embedding(vocab_size, embed_size)
         self.lstm = nn.LSTM( input_size=embed_size, hidden_size=hidden_size, num_layers=num_layers, dropout=0.5,
                                 batch_first=True, bidirectional=False)
@@ -15,9 +17,18 @@ class VolapukModel(nn.Module):
         self.batchnorm = nn.BatchNorm1d(hidden_size)
         self.linear = nn.Linear(hidden_size, num_output)
 
-    def forward(self, x, seq_lengths):
-        embed = self.embedding(x)
+        # self.mask = torch.nn.Parameter(torch.randn(16,140) / 1000)
+        # self.bilinear = nn.Linear(140,140)
 
+    def forward(self, x, seq_lengths):
+
+        # x = self.bilinear(x)
+
+        # embed = torch.nn.functional.one_hot(x, self.vocab_size).float()
+        embed = self.embedding(x)
+        # print('shapes',x.shape,embed.shape)
+        # print('pre-x',x)
+        # print('post-x',embed)
         pack = nn.utils.rnn.pack_sequence(embed)
         # print('pack',pack[0].shape,pack[1].shape)
         out, _ = self.lstm(pack, None)
