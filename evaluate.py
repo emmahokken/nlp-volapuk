@@ -51,6 +51,8 @@ def evaluate(args):
     accuracies = []
     steps = []
 
+    model.eval()
+
     for i in tqdm(range(args.training_steps)):
 
         # Get batch and targets, however not in correct format
