@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import time
 from vae import VAE
+from termcolor import colored
 
 # def retrain(args):
 #     data = DataSet()
@@ -101,7 +102,7 @@ def train(args):
     # print('########## K           ##########')
     # print('#################################\n')
 
-    params_id = '_b'+str(args.batch_size)+'_h'+str(args.num_hidden)+'_l'+str(args.num_layers)+'_s'+str(args.seed)+'_it'+str(args.training_steps)
+    params_id = '_b'+str(args.batch_size)+'_h'+str(args.num_hidden)+'_l'+str(args.num_layers)+'_s'+str(args.seed)+'_it'+str(args.training_steps)+'_k'+str(args.k)
 
     timestamp = time.asctime(time.localtime(time.time())).replace('  ',' ').replace(' ','_')
 
@@ -121,12 +122,15 @@ def train(args):
     # print(len(data.char2int))
 
     args.vocab_size = len(data.char2int)
-    args.embedding_size = len(data.char2int)#128
+    args.embedding_size = 256#len(data.char2int)#128
     args.classes = len(data.languages)
-    # args.hidden_size = 128
+    args.num_hidden = 64
     # args.layers = 2
+
+    print(args)
+
     model = VolapukModel(vocab_size=args.vocab_size, embed_size=args.embedding_size, num_output=args.classes,
-            hidden_size=args.num_hidden, num_layers=args.num_layers, batch_first=True).to(device=device)
+            hidden_size=args.num_hidden, num_layers=args.num_layers, batch_first=True, k=args.k).to(device=device)
 
     vae = VAE(hidden_dim=500, z_dim=20, input_dim=140, device=device).to(device=device)
 
@@ -156,7 +160,7 @@ def train(args):
     #     train_languages = latinlangs.readlines()
     #     train_languages = [tl[:-1] for tl in train_languages]
 
-    print('\n#################################')
+    print('\n###################################')
     print('############ Languages ############')
     print('###################################')
     print(data.languages)
@@ -179,7 +183,7 @@ def train(args):
         # print('output', output[0,:])
         # print('elbo',elbo)
 
-        out = model.forward(X, (torch.ones(args.batch_size)*args.batch_size).long()) # lstm from dl
+        out, _ = model.forward(X, (torch.ones(args.batch_size)*args.batch_size).long()) # lstm from dl
         optimizer.zero_grad()
         loss = criterion(out, Y)
         loss.backward()
@@ -190,7 +194,7 @@ def train(args):
             model.eval()
             test_batch, test_targets = data.get_next_test_batch(args.batch_size)
             test_X, test_Y = get_X_Y_from_batch(test_batch, test_targets, data, args.device)
-            test_out = model.forward(test_X, (torch.ones(args.batch_size)*args.batch_size).long())
+            test_out, test_mask = model.forward(test_X, (torch.ones(args.batch_size)*args.batch_size).long())
             test_loss = criterion(test_out, test_Y)
 
             # get max indices for accuracy
@@ -206,6 +210,8 @@ def train(args):
             losses.append(test_loss.item())
             steps.append(i)
 
+            show(test_X, test_mask, data)
+
             model.train()
 
     torch.save(model.state_dict(), f'models/model_{modelname_id}.p')
@@ -220,6 +226,38 @@ def train(args):
     # plt.show()
     plt.savefig(f'plots/loss_{modelname_id}.png')
     plt.close(fig)
+
+
+def show(x, mask, data):
+    # print(x.shape)
+    # print(x)
+    if mask is not None:
+        # print(mask.shape)
+        # print(mask)
+        # print(mask[0,:])
+        # print(data.char2int)
+        keys = [key for key in data.char2int]
+        # print(x.shape)
+        for l in range(2):
+        # for l in range(x.shape[0]):
+            mask_par = ''
+            orig_par = ''
+            par = ''
+            for i,j in zip(x[l,:],mask[l,:]):
+                # mask_par = mask_par + colored(keys[j], 'green')
+                # orig_par = orig_par + colored(keys[i], 'red')
+                if keys[j] == keys[i]:
+                    par = par + colored(keys[i], 'green')
+                else:
+                    par = par + colored(keys[i], 'red')
+
+            print(f'batch {l}')
+            # print(mask_par)
+            # print(orig_par)
+            print(par)
+
+    else:
+        print(x)
 
 
 def accuracy(predictions, targets):
@@ -259,6 +297,8 @@ if __name__ == "__main__":
     parser.add_argument('--evaluate_steps', type=int, default=25, help="Evaluate model every so many steps")
 
     parser.add_argument('--eval', type=bool, default=False, help="Evaluate model")
+
+    parser.add_argument('--k', type=int, default=140, help="Num of characters for prediction")
 
     args = parser.parse_args()
 
