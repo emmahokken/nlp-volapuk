@@ -10,6 +10,9 @@ from scipy.spatial import distance
 from nltk import bigrams
 from tqdm import tqdm
 
+import operator
+import csv
+
 def bigram_ratio(data):
 
     chars_ratio = {}
@@ -91,7 +94,19 @@ def unigram_baseline(args):
 
     correct = 0
 
-    for pars in data.test_paragraphs:
+    # correct_dict = {data.lan2int[lan]: torch.zeros(len(data.languages)) for lan in data.languages}
+    # total_dict = {data.lan2int[lan]: torch.zeros(len(data.languages)) for lan in data.languages}
+
+    correct_dict = {data.lan2int[lan]: 0 for lan in data.languages}
+    total_dict = {data.lan2int[lan]: 0 for lan in data.languages}
+
+    # correct_dict = {lan: 0 for lan in data.languages}
+    # total_dict = {lan: 0 for lan in data.languages}
+
+    # print(correct_dict)
+
+    for pars in tqdm(data.test_paragraphs):
+    # for index, pars in tqdm(enumerate(data.test_paragraphs)):
         unk_counter = 0
 
         counters = np.zeros((len(all_real_chars)))
@@ -112,9 +127,42 @@ def unigram_baseline(args):
         if pred_lan == data.test_par2lan[pars]:
             correct += 1
 
+        correct_dict[data.lan2int[data.test_par2lan[pars]]] += 1
+        if pred_lan == data.test_par2lan[pars]:
+            total_dict[data.lan2int[data.test_par2lan[pars]]] += 1
+
+        # if index > 1000:
+        #     break
+
+    lan2language = {}
+    with open('../data/wili-2018/labels.csv', 'r') as f:
+        csv_reader = csv.reader(f, delimiter=';')
+        line_count = 0
+        for row in csv_reader:
+            if line_count == 0:
+                print(f'Column names are {", ".join(row)}')
+                line_count += 1
+            else:
+                if row[1] == 'Swahili (macrolanguage)':
+                    lan2language[row[0]] = 'Swahili'
+                    continue
+                lan2language[row[0]] = row[1]
+
+    print(total_dict)
+
+    acc_per_lan = {}
+    for lan in data.languages:
+        acc_per_lan[lan2language[lan]] = (total_dict[data.lan2int[lan]] / correct_dict[data.lan2int[lan]])
+
+    print(acc_per_lan)
+    print('acc_per_lan',np.mean([val for key,val in reversed(sorted(acc_per_lan.items(), key=operator.itemgetter(1)))]))
+
+
     accuracy = correct / len(data.test_paragraphs)
 
     print("Accuracy:", accuracy)
+
+    return acc_per_lan
 
 def determine_eucl_dist(ratio, chars_ratio):
     smallest = 9999999

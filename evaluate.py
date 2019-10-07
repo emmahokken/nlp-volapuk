@@ -13,6 +13,8 @@ from tqdm import tqdm
 import time
 
 import csv
+import operator
+import baseline
 
 def evaluate(args):
 
@@ -23,16 +25,23 @@ def evaluate(args):
 
     data = DataSet()
 
-    vocab_size = 217
-    args.embedding_size = 128
-    args.classes = 146
-    args.rnn = 'LSTM'
-    args.mean_seq = False
-    args.hidden_size = 128
-    args.layers = 2
+    # vocab_size = 217
+    # args.embedding_size = 128
+    # args.classes = 146
+    # args.rnn = 'LSTM'
+    # args.mean_seq = False
+    # args.hidden_size = 128
+    # args.layers = 2
 
-    model = VolapukModel(vocab_size=vocab_size, embed_size=args.embedding_size, num_output=args.classes,
-            hidden_size=args.hidden_size, num_layers=args.layers, batch_first=True).to(device=device)
+    args.vocab_size = len(data.char2int)
+    args.embedding_size = 256#len(data.char2int)#128
+    args.classes = len(data.languages)
+    args.num_hidden = 64
+    model = VolapukModel(vocab_size=args.vocab_size, embed_size=args.embedding_size, num_output=args.classes,
+            hidden_size=args.num_hidden, num_layers=args.num_layers, batch_first=True, k=args.k).to(device=device)
+
+    # model = VolapukModel(vocab_size=vocab_size, embed_size=args.embedding_size, num_output=args.classes,
+    #         hidden_size=args.hidden_size, num_layers=args.layers, batch_first=True).to(device=device)
 
     if args.load_model:
         print(f'Load model {args.PATH}.p')
@@ -88,8 +97,10 @@ def evaluate(args):
         X = X.to(device)
         Y = Y.to(device)
 
-        out = model.forward(X, (torch.ones(args.batch_size)*args.batch_size).long())
+        out, _, _ = model.forward(X, (torch.ones(args.batch_size)*args.batch_size).long())
         acc, correct_dict, total_dict = accuracy(out, Y, correct_dict, total_dict)
+
+    print(correct_dict)
 
     lan2language = {}
     with open('../data/wili-2018/labels.csv', 'r') as f:
@@ -107,9 +118,17 @@ def evaluate(args):
 
     acc_per_lan = {}
     for lan in data.languages:
-        acc_per_lan[lan2language[lan]] = (total_dict[data.lan2int[lan]] / correct_dict[data.lan2int[lan]]).mean()
+        acc_per_lan[lan2language[lan]] = (total_dict[data.lan2int[lan]] / correct_dict[data.lan2int[lan]]).mean().item()
 
-    plot_languages(acc_per_lan)
+    print(acc_per_lan)
+
+    baseline_acc_per_lan = baseline.unigram_baseline(args)
+
+    # barplot_languages(acc_per_lan, baseline_acc_per_lan)
+    barplot_languages(acc_per_lan, baseline_acc_per_lan, acc_per_lan)
+    # plot_languages(acc_per_lan)
+
+    return acc_per_lan, baseline_acc_per_lan
 
 def plot_languages(acc_per_lan):
     tenners = []
@@ -195,6 +214,44 @@ def plot_languages(acc_per_lan):
     plt.savefig('acc_per_lan')
     plt.show()
 
+def barplot_languages(acc_per_lan, baseline_acc_per_lan, lambda_acc_per_lan):
+
+    keys = [key for key, val in reversed(sorted(acc_per_lan.items(), key=operator.itemgetter(1)))]
+    vals = [val for key, val in reversed(sorted(acc_per_lan.items(), key=operator.itemgetter(1)))]
+    lambda_vals = [lambda_acc_per_lan[key] for key in keys]
+    base_vals = [baseline_acc_per_lan[key] for key in keys]
+
+    print(len(keys))
+
+
+    # for n_keys, n_vals, n_base_vals in zip([keys[:50], keys[50:100], keys[100:]], [vals[:50], vals[50:100], vals[100:]], [base_vals[:50], base_vals[50:100], base_vals[100:]]):
+    for n_keys, n_vals, n_base_vals, n_lambda_vals in zip([keys[:78], keys[78:]], [vals[:78], vals[78:]], [base_vals[:78], base_vals[78:]], [lambda_vals[:78], lambda_vals[78:]]):
+
+        y_pos = np.arange(len(n_keys))
+        ax = plt.subplot(111)
+        w = 0.3
+
+        # plt.bar(y_pos, vals, align='center', alpha=0.5)
+        # plt.xticks(y_pos, keys, rotation='vertical', fontsize=10)
+
+        ax.plot(y_pos, n_vals, color='b',label='LSTM-model')
+        # ax.plot(y_pos-w, n_vals, width=w, color='b', align='center',label='LSTM-model')
+        ax.bar(y_pos, n_lambda_vals, width=w, color='g', align='center',label='\u03BB-LSTM-model')
+        ax.bar(y_pos+w, n_base_vals, width=w, color='r', align='center',label='BoC')
+        plt.xticks(y_pos, n_keys, rotation='vertical', fontsize=7)
+        ax.xaxis_date()
+        ax.autoscale(tight=True)
+        ax.legend()
+
+        plt.show()
+
+    y_pos = np.arange(len(keys))
+    plt.grid(b=True, axis='x')
+    plt.scatter(y_pos, vals, color='b',label='LSTM-model')
+    plt.scatter(y_pos, lambda_vals, color='g',label='\u03BB-LSTM-model')
+    plt.scatter(y_pos, base_vals, color='r',label='BoC')
+    plt.show()
+
 
 def accuracy(predictions, targets, correct_dict, total_dict):
     _, ind = torch.max(predictions, dim=1)
@@ -216,10 +273,10 @@ if __name__ == "__main__":
     # Model params
     parser.add_argument('--input_dim', type=int, default=1, help='Dimensionality of input sequence')
     parser.add_argument('--num_hidden', type=int, default=128, help='Number of hidden units in the model')
-    parser.add_argument('--num_layers', type=int, default=16, help='Number of layers in the model')
+    parser.add_argument('--num_layers', type=int, default=2, help='Number of layers in the model')
 
     parser.add_argument('--batch_size', type=int, default=128, help='Number of examples to process in a batch')
-    parser.add_argument('--training_steps', type=int, default=500, help='Number of training steps')
+    parser.add_argument('--training_steps', type=int, default=1000, help='Number of training steps')
     parser.add_argument('--learning_rate', type=float, default=0.01, help='Learning rate')
     parser.add_argument('--momentum', type=float, default=0.95, help='Momentum')
 
@@ -230,8 +287,18 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int, default=42, help="Set seed")
     parser.add_argument('--evaluate_steps', type=int, default=25, help="Evaluate model every so many steps")
 
+
+    parser.add_argument('--k', type=int, default=140, help="Num of characters for prediction")
+
     args = parser.parse_args()
 
     # Train the model
     # retrain(args)
-    evaluate(args)
+
+    # args.PATH should be the no lambda model
+    acc_per_lan, baseline_acc_per_lan = evaluate(args)
+
+    args.PATH = 'models/model__b128_h128_l2_s42_it20000_k35_Mon_Oct_7_11:30:12_2019' # this is lambda model
+    lambda_acc_per_lan, baseline_acc_per_lan = evaluate(args)
+
+    barplot_languages(acc_per_lan, baseline_acc_per_lan, lambda_acc_per_lan)

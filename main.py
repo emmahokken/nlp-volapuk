@@ -13,6 +13,7 @@ from tqdm import tqdm
 import time
 from vae import VAE
 from termcolor import colored
+import csv
 
 # def retrain(args):
 #     data = DataSet()
@@ -182,10 +183,12 @@ def train(args):
         # print('z',z[0,:])
         # print('output', output[0,:])
         # print('elbo',elbo)
-
-        out, _ = model.forward(X, (torch.ones(args.batch_size)*args.batch_size).long()) # lstm from dl
+        lambd = 0.1
+        out, _, mask_loss = model.forward(X, (torch.ones(args.batch_size)*args.batch_size).long()) # lstm from dl
+        # print(mask_loss, args.batch_size, mask_loss/args.batch_size)
         optimizer.zero_grad()
         loss = criterion(out, Y)
+        loss = loss + lambd * mask_loss/args.batch_size
         loss.backward()
         optimizer.step()
 
@@ -194,8 +197,9 @@ def train(args):
             model.eval()
             test_batch, test_targets = data.get_next_test_batch(args.batch_size)
             test_X, test_Y = get_X_Y_from_batch(test_batch, test_targets, data, args.device)
-            test_out, test_mask = model.forward(test_X, (torch.ones(args.batch_size)*args.batch_size).long())
+            test_out, test_mask, test_mask_loss = model.forward(test_X, (torch.ones(args.batch_size)*args.batch_size).long())
             test_loss = criterion(test_out, test_Y)
+            test_loss = test_loss + lambd * test_mask_loss/args.batch_size
 
             # get max indices for accuracy
             _, ind = torch.max(test_out, axis=1)
@@ -212,6 +216,11 @@ def train(args):
 
             show(test_X, test_mask, data)
 
+            with open(f'csv/csv_{modelname_id}.csv','a') as f:
+                # fd.write()
+                writer = csv.writer(f)
+                writer.writerow([i, acc, test_loss]
+)
             model.train()
 
     torch.save(model.state_dict(), f'models/model_{modelname_id}.p')

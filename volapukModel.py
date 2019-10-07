@@ -44,19 +44,22 @@ class VolapukModel(nn.Module):
             enc_lstm = unpack[torch.arange(0, x.size(0)).long(), seq_lengths - 1, :]
             sig = self.sigmoid(enc_lstm)
             ### prev try
-            # bernou = torch.bernoulli(sig)
-            # mask = bernou.long()*x
+            bernou = torch.bernoulli(sig)
+            mask = bernou.long()
+            mask_x = mask*x
             # # it always gives 0 to the 0 version, should be made better but for now it works??
             # mask[mask == 0] = self.vocab_size+1
             # embed = self.embedding(mask)
             # print(embed)
-            
+            # print(mask)
+            # print(mask.shape)
+            # print(torch.sum(mask).item())
+
             ### new try
             # k = 100# num of characters to highligh
-            v,i = torch.topk(sig,self.k)
+            # v,i = torch.topk(sig,self.k)
             # print(i.is_cuda, x.is_cuda)
-            # mask_x = torch.zeros(x.shape).to(self.device).scatter_(1,i,1)
-            mask_x = torch.zeros(x.shape).to(self.device).scatter_(1,i.to(self.device),1).long() * x
+            # mask_x = torch.zeros(x.shape).to(self.device).scatter_(1,i.to(self.device),1).long() * x
             embed = self.embedding(x)
         else:
             mask_x = None
@@ -88,5 +91,5 @@ class VolapukModel(nn.Module):
         out = self.linear(out)
         # print('outl1',out.shape)
 
-        return out, mask_x
+        return out, mask_x, torch.sum(mask).item()
 
