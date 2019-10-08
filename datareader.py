@@ -47,7 +47,7 @@ class DataSet:
 
         self.languages = sorted(list(self.languages))
         self.char2int, self.par2lan, self.all_real_chars, self.all_bigram_chars = self.parse_chars()
-        self.lan2int = self.parse_lan()
+        self.lan2int, self.int2lan = self.parse_lan()
         print("data reading complete")
 
 
@@ -90,10 +90,12 @@ class DataSet:
 
     def parse_lan(self):
         lan2int = {}
+        int2lan = {}
 
         for i, lan in enumerate(self.languages):
             lan2int[lan] = i
-        return lan2int
+            int2lan[i] = lan
+        return lan2int, int2lan
 
     def get_next_batch(self, batch_size, legal_langs=None):
         batch = []

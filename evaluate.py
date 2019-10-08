@@ -16,33 +16,26 @@ import csv
 import operator
 import baseline
 
+from main import show, get_X_Y_from_batch
+
 def evaluate(args):
 
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # device = 'cpu'
+
     print(device)
 
     data = DataSet()
-
-    # vocab_size = 217
-    # args.embedding_size = 128
-    # args.classes = 146
-    # args.rnn = 'LSTM'
-    # args.mean_seq = False
-    # args.hidden_size = 128
-    # args.layers = 2
 
     args.vocab_size = len(data.char2int)
     args.embedding_size = 256#len(data.char2int)#128
     args.classes = len(data.languages)
     args.num_hidden = 64
+
     model = VolapukModel(vocab_size=args.vocab_size, embed_size=args.embedding_size, num_output=args.classes,
-            hidden_size=args.num_hidden, num_layers=args.num_layers, batch_first=True, k=args.k).to(device=device)
+            hidden_size=args.num_hidden, num_layers=args.num_layers, batch_first=True, importance_sampler=args.importance_sampler).to(device=device)
 
-    # model = VolapukModel(vocab_size=vocab_size, embed_size=args.embedding_size, num_output=args.classes,
-    #         hidden_size=args.hidden_size, num_layers=args.layers, batch_first=True).to(device=device)
-
+    print('\n\n', args.importance_sampler)
     if args.load_model:
         print(f'Load model {args.PATH}.p')
         model.load_state_dict(torch.load(f'{args.PATH}.p', map_location=device))
@@ -50,7 +43,6 @@ def evaluate(args):
     correct_dict = {data.lan2int[lan]: torch.zeros(len(data.languages)) for lan in data.languages}
     total_dict = {data.lan2int[lan]: torch.zeros(len(data.languages)) for lan in data.languages}
 
-    loss = nn.CrossEntropyLoss()
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=args.momentum)
 
@@ -65,7 +57,6 @@ def evaluate(args):
     for i in tqdm(range(args.training_steps)):
 
         # Get batch and targets, however not in correct format
-        # batch, targets = data.get_next_batch(args.batch_size)
         batch, targets = data.get_next_test_batch(args.batch_size)
         list_of_one_hot_X = []
 
@@ -97,10 +88,13 @@ def evaluate(args):
         X = X.to(device)
         Y = Y.to(device)
 
-        out, _, _ = model.forward(X, (torch.ones(args.batch_size)*args.batch_size).long())
-        acc, correct_dict, total_dict = accuracy(out, Y, correct_dict, total_dict)
 
-    print(correct_dict)
+        test_batch, test_targets = data.get_next_test_batch(args.batch_size)
+        test_X, test_Y = get_X_Y_from_batch(test_batch, test_targets, data, args.device)
+        test_out, test_mask, test_mask_loss = model.forward(test_X, (torch.ones(args.batch_size)*args.batch_size).long())
+
+        acc, correct_dict, total_dict = accuracy(test_out, Y, correct_dict, total_dict)
+        show(test_X, test_mask, test_Y, data)
 
     lan2language = {}
     with open('../data/wili-2018/labels.csv', 'r') as f:
@@ -186,12 +180,6 @@ def plot_languages(acc_per_lan):
     for i, lan in enumerate(thirties):
         lin = np.linspace(min, 1500, len(thirties))
         plt.text(.302, lin[i], lan)
-    # for i, lan in enumerate(twenties):
-    #     lin = np.linspace(min, 1500, len(twenties))
-    #     plt.text(.202, lin[i], lan)
-    # for i, lan in enumerate(tenners):
-    #     lin = np.linspace(min, 1500, len(tenners))
-    #     plt.text(.102, lin[i], lan)
 
     filler = np.arange(0.3,1.1,0.1)
 
@@ -223,19 +211,13 @@ def barplot_languages(acc_per_lan, baseline_acc_per_lan, lambda_acc_per_lan):
 
     print(len(keys))
 
-
-    # for n_keys, n_vals, n_base_vals in zip([keys[:50], keys[50:100], keys[100:]], [vals[:50], vals[50:100], vals[100:]], [base_vals[:50], base_vals[50:100], base_vals[100:]]):
     for n_keys, n_vals, n_base_vals, n_lambda_vals in zip([keys[:78], keys[78:]], [vals[:78], vals[78:]], [base_vals[:78], base_vals[78:]], [lambda_vals[:78], lambda_vals[78:]]):
 
         y_pos = np.arange(len(n_keys))
         ax = plt.subplot(111)
         w = 0.3
 
-        # plt.bar(y_pos, vals, align='center', alpha=0.5)
-        # plt.xticks(y_pos, keys, rotation='vertical', fontsize=10)
-
         ax.plot(y_pos, n_vals, color='b',label='LSTM-model')
-        # ax.bar(y_pos-w, n_vals, width=w, color='b', align='center',label='LSTM-model')
         ax.bar(y_pos, n_lambda_vals, width=w, color='g', align='center',label='\u03BB-LSTM-model')
         ax.bar(y_pos+w, n_base_vals, width=w, color='r', align='center',label='BoC')
         plt.xticks(y_pos, n_keys, rotation='vertical', fontsize=7)
@@ -271,43 +253,34 @@ def print_csv():
     boc = []
     lstm = []
     lambd = []
-    with open('evaluation_data.csv', mode='r') as f:
-        csv_reader = csv.reader(f, delimiter=',')
-        for ind, row in enumerate(csv_reader):
-            try:
-                boc.append(float(row[-1]))
-                lambd.append(float(row[-2]))
-                lstm.append(float(row[-3]))
-            except:
-                pass
-            # line = ''
-            for i, r in enumerate(row):
+    try:
+        with open('evaluation_data.csv', mode='r') as f:
+            csv_reader = csv.reader(f, delimiter=',')
+            for ind, row in enumerate(csv_reader):
                 try:
-                    row[i] = str(round(float(r),3))
+                    boc.append(float(row[-1]))
+                    lambd.append(float(row[-2]))
+                    lstm.append(float(row[-3]))
                 except:
-                    row[i] = r
-            # print(ind, ' & '.join(row), '\\\\')
-            big_table.append(' & '.join(row))
-    # print(len(big_table[1:74]),len(big_table[74:]))
-    # for b1, b2 in zip(big_table[1:74], big_table[74:]):
-    #     print(b1, '&', b2, '\\\\')
+                    pass
+                # line = ''
+                for i, r in enumerate(row):
+                    try:
+                        row[i] = str(round(float(r),3))
+                    except:
+                        row[i] = r
+                # print(ind, ' & '.join(row), '\\\\')
+                big_table.append(' & '.join(row))
+    except:
+        pass
     big1 = big_table[1:50]
     big2 = big_table[50:99]
     big3 = big_table[99:]
     big3.append(f'Total & {np.mean(lstm[1:])} & {np.mean(lambd[1:])} & {np.mean(boc[1:])}')
     print(big3)
-    # print(len(big1), len(big2), len(big3))
+
     for b1, b2, b3 in zip(big1, big2, big3):
         print(b1, '&', b2, '&', b3, '\\\\')
-    # print(len(big_table[1:50]),len(big_table[50:99]),len(big_table[99:]))
-    # for b1, b2, b3 in zip(big_table[1:49], big_table[49:49*2], big_table[49*2:]):
-    #     print(b1, '&', b2, '&', b3, '\\\\')
-    # print(np.argmax(boc[1:]),max(boc[1:]))
-    # print('boc  ', np.mean(boc[1:]))
-    # print('lambd', np.mean(lambd[1:]))
-    # print('lstm ', np.mean(lstm[1:]))
-
-
 
 def accuracy(predictions, targets, correct_dict, total_dict):
     _, ind = torch.max(predictions, dim=1)
@@ -328,7 +301,7 @@ if __name__ == "__main__":
 
     # Model params
     parser.add_argument('--input_dim', type=int, default=1, help='Dimensionality of input sequence')
-    parser.add_argument('--num_hidden', type=int, default=128, help='Number of hidden units in the model')
+    parser.add_argument('--num_hidden', type=int, default=64, help='Number of hidden units in the model')
     parser.add_argument('--num_layers', type=int, default=2, help='Number of layers in the model')
 
     parser.add_argument('--batch_size', type=int, default=128, help='Number of examples to process in a batch')
@@ -343,8 +316,8 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int, default=42, help="Set seed")
     parser.add_argument('--evaluate_steps', type=int, default=25, help="Evaluate model every so many steps")
 
+    parser.add_argument('--importance_sampler', type=bool, default=False, help='Boolean representing whether or not to use the importance sampler.')
 
-    parser.add_argument('--k', type=int, default=140, help="Num of characters for prediction")
 
     args = parser.parse_args()
 

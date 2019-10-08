@@ -15,53 +15,6 @@ from vae import VAE
 from termcolor import colored
 import csv
 
-# def retrain(args):
-#     data = DataSet()
-
-#     # HARDCODED WATCH THIS SPACE
-#     model = modelRNN(1, args.num_hidden, args.num_layers)
-#     loss = nn.CrossEntropyLoss()
-#     optimizer = torch.optim.RMSprop(model.parameters(), lr=args.learning_rate)
-
-#     for i in range(args.training_steps):
-
-#         batch, targets = data.get_next_batch(args.batch_size)
-#         list_of_one_hot_X = []
-
-#         for par in batch:
-#             par = par[-140:]
-#             x = []
-#             for char in par:
-#                 x.append(data.char2int[char])
-#             x_tensor = torch.tensor(x).view(-1, 1)
-#             # x_one_hot = torch.zeros(x_tensor.size()[0], len(data.char2int)).scatter_(1, x_tensor, 1)
-#             list_of_one_hot_X.append(x_tensor)
-
-#         X = torch.stack(list_of_one_hot_X)
-
-#         # convert targets to Y
-#         languages = list(data.languages)
-#         sorted(languages)
-#         y = []
-#         for target in targets:
-#             y.append(languages.index(target))
-#         y_tensor = torch.tensor(y).view(-1, 1)
-#         Y = torch.zeros(y_tensor.size()[0], len(data.languages)).scatter_(1, y_tensor, 1)
-
-#         optimizer.zero_grad()
-
-#         out, hidden = model.forward(X.float())
-
-#         output = loss(out.float(), Y.long())
-#         output.backward()
-#         optimizer.step()
-
-#         if i % 100 == 0:
-#             acc = accuracy(out, y_tensor)
-#             print("accuracy:", acc)
-#             print('loss:', output.item())
-#             print()
-
 def get_X_Y_from_batch(batch, targets, data, device):
     batch_x = []
     batch_y = []
@@ -74,7 +27,7 @@ def get_X_Y_from_batch(batch, targets, data, device):
         # This way it is easier for the batches to be read, as well as the bias for the length of the text to be removed.
         par = par[-140:]
         x = []
-        # for all characters in the paragraph, try to append it, else it should be _unk_
+        # For all characters in the paragraph, try to append it, else it should be _unk_
         for char in par:
             try:
                 x.append(data.char2int[char])
@@ -90,7 +43,7 @@ def get_X_Y_from_batch(batch, targets, data, device):
     return X,Y
 
 def train(args):
-    # Variational Observed LAnguage Predictor 
+    # Variational Observed LAnguage Predictor
     print('#################################')
     print('############ Volapuk ############')
     print('#################################\n')
@@ -115,25 +68,16 @@ def train(args):
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
     np.random.seed(args.seed)
-    # random.seed(args.seed)
-    
-    data = DataSet()
-    # parse_chars(data)
 
-    # print(len(data.char2int))
+    data = DataSet()
 
     args.vocab_size = len(data.char2int)
-    args.embedding_size = 256#len(data.char2int)#128
     args.classes = len(data.languages)
-    args.num_hidden = 64
-    # args.layers = 2
 
     print(args)
 
     model = VolapukModel(vocab_size=args.vocab_size, embed_size=args.embedding_size, num_output=args.classes,
-            hidden_size=args.num_hidden, num_layers=args.num_layers, batch_first=True, k=args.k).to(device=device)
-
-    vae = VAE(hidden_dim=500, z_dim=20, input_dim=140, device=device).to(device=device)
+            hidden_size=args.num_hidden, num_layers=args.num_layers, batch_first=True, importance_sampler=args.importance_sampler).to(device=device)
 
     if args.load_PATH is not None:
         print(f'Load model {args.load_PATH}')
@@ -145,21 +89,14 @@ def train(args):
     print('#################################')
     print(model)
 
-    # loss = nn.CrossEntropyLoss()
     criterion = nn.CrossEntropyLoss()
-    # optimizer = optim.SGD(model.parameters(), lr=args.learning_rate)
     optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=args.momentum)
-    vae_optimizer = torch.optim.Adam(model.parameters())
 
     temp_batch_size = args.batch_size
 
     losses = []
     accuracies = []
     steps = []
-
-    # with open('latinlangs.txt', 'r') as latinlangs:
-    #     train_languages = latinlangs.readlines()
-    #     train_languages = [tl[:-1] for tl in train_languages]
 
     print('\n###################################')
     print('############ Languages ############')
@@ -168,24 +105,13 @@ def train(args):
 
     for i in tqdm(range(args.training_steps)):
 
-        # get batch and targets, however not in correct format
+        # Get batch and targets, however not in correct format
         batch, targets = data.get_next_batch(args.batch_size)
         X,Y = get_X_Y_from_batch(batch, targets, data, args.device)
-        
-        # elbo, z, output = vae.forward(X.float())
-        # # average_epoch_elbo += loss.item()
-        # vae_optimizer.zero_grad()
-        # elbo.backward()
-        # vae_optimizer.step()
-        # print('VAE')
 
-        # print('X',X[0,:])
-        # print('z',z[0,:])
-        # print('output', output[0,:])
-        # print('elbo',elbo)
         lambd = 0.1
         out, _, mask_loss = model.forward(X, (torch.ones(args.batch_size)*args.batch_size).long()) # lstm from dl
-        # print(mask_loss, args.batch_size, mask_loss/args.batch_size)
+
         optimizer.zero_grad()
         loss = criterion(out, Y)
         loss = loss + lambd * mask_loss/args.batch_size
@@ -193,88 +119,72 @@ def train(args):
         optimizer.step()
 
         if i % args.evaluate_steps == 0:
-            # get batch from test data
+            # Get batch from test data
             model.eval()
             test_batch, test_targets = data.get_next_test_batch(args.batch_size)
             test_X, test_Y = get_X_Y_from_batch(test_batch, test_targets, data, args.device)
             test_out, test_mask, test_mask_loss = model.forward(test_X, (torch.ones(args.batch_size)*args.batch_size).long())
             test_loss = criterion(test_out, test_Y)
             test_loss = test_loss + lambd * test_mask_loss/args.batch_size
-            # print(test_mask_loss)
-            # get max indices for accuracy
+
+            # Get max indices for accuracy
             _, ind = torch.max(test_out, axis=1)
             acc = (ind == test_Y).float().mean()
 
-            # print current data
+            # Print current data
             print('acc', acc)
             print('loss',test_loss.item())
 
-            # append acc/loss to plot
+            # Append acc/loss to plot
             accuracies.append(acc)
             losses.append(test_loss.item())
             steps.append(i)
 
-            # show(test_X, test_mask, data)
+            if args.importance_sampler:
+                show(test_X, test_mask, data)
 
             with open(f'csv/csv_{modelname_id}.csv','a') as f:
-                # fd.write()
                 writer = csv.writer(f)
-                writer.writerow([i, acc, test_loss]
-)
+                writer.writerow([i, acc, test_loss])
             model.train()
 
     torch.save(model.state_dict(), f'models/model_{modelname_id}.p')
     fig = plt.figure()
     plt.plot(steps, accuracies)
-    # plt.show()
     plt.savefig(f'plots/acc_{modelname_id}.png')
     plt.close(fig)
 
     fig = plt.figure()
     plt.plot(steps, losses)
-    # plt.show()
     plt.savefig(f'plots/loss_{modelname_id}.png')
     plt.close(fig)
 
 
-def show(x, mask, data):
-    # print(x.shape)
-    # print(x)
+def show(x, mask, target, data):
+
     if mask is not None:
-        # print(mask.shape)
-        # print(mask)
-        # print(mask[0,:])
-        # print(data.char2int)
         keys = [key for key in data.char2int]
-        # print(x.shape)
-        for l in range(2):
-        # for l in range(x.shape[0]):
+
+        for l in range(len(target)):
+            # print(f'\n{}')
             mask_par = ''
             orig_par = ''
             par = ''
-            for i,j in zip(x[l,:],mask[l,:]):
-                # mask_par = mask_par + colored(keys[j], 'green')
-                # orig_par = orig_par + colored(keys[i], 'red')
-                if keys[j] == keys[i]:
-                    par = par + colored(keys[i], 'green')
-                else:
-                    par = par + colored(keys[i], 'red')
+            if data.int2lan[target[l].item()] == 'mri':
+                for i,j in zip(x[l,:],mask[l,:]):
+                    if keys[j] == keys[i]:
+                        par = par + colored(keys[i], 'green')
+                    else:
+                        par = par + colored(keys[i], 'red')
 
-            print(f'batch {l}')
-            # print(mask_par)
-            # print(orig_par)
-            print(par)
+                print(f'batch {l}')
+                print(par)
 
     else:
         print(x)
 
 
 def accuracy(predictions, targets):
-    # pred = torch.argmax(predictions, dim=1).float()
-    # tar = targets.float()
-    #
-    # return (pred - tar).mean()
-
     prediction = predictions.argmax(dim=1)
     target = targets
 
@@ -289,7 +199,7 @@ if __name__ == "__main__":
 
     # Model params
     parser.add_argument('--input_dim', type=int, default=1, help='Dimensionality of input sequence')
-    parser.add_argument('--num_hidden', type=int, default=128, help='Number of hidden units in the model')
+    parser.add_argument('--num_hidden', type=int, default=64, help='Number of hidden units in the model')
     parser.add_argument('--num_layers', type=int, default=2, help='Number of layers in the model')
 
     parser.add_argument('--batch_size', type=int, default=128, help='Number of examples to process in a batch')
@@ -299,22 +209,19 @@ if __name__ == "__main__":
 
     parser.add_argument('--device', type=str, default="cuda:0", help="Training device 'cpu' or 'cuda:0'")
 
-    # parser.add_argument('--PATH', type=str, default="", help="Model name to save")
     parser.add_argument('--load_PATH', type=str, default=None, help="Load model from")
 
     parser.add_argument('--seed', type=int, default=42, help="Set seed")
     parser.add_argument('--evaluate_steps', type=int, default=25, help="Evaluate model every so many steps")
 
     parser.add_argument('--eval', type=bool, default=False, help="Evaluate model")
+    parser.add_argument('--embedding_size', type=int, default=256, help='Size of the character embeddings used.')
 
-    parser.add_argument('--k', type=int, default=140, help="Num of characters for prediction")
-
+    parser.add_argument('--importance_sampler', type=bool, default=False, help='Boolean representing whether or not to use the importance sampler.')
     args = parser.parse_args()
 
     # Train the model
-    # retrain(args)
     if args.eval:
         data = DataSet()
-        
     else:
         train(args)
