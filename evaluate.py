@@ -15,7 +15,7 @@ import csv
 import operator
 import baseline
 
-from main import show, get_X_Y_from_batch
+import main
 
 def evaluate(args):
 
@@ -89,11 +89,11 @@ def evaluate(args):
 
 
         test_batch, test_targets = data.get_next_test_batch(args.batch_size)
-        test_X, test_Y = get_X_Y_from_batch(test_batch, test_targets, data, args.device)
+        test_X, test_Y = main.get_X_Y_from_batch(test_batch, test_targets, data, args.device)
         test_out, test_mask, test_mask_loss = model.forward(test_X, (torch.ones(args.batch_size)*args.batch_size).long())
 
         acc, correct_dict, total_dict = accuracy(test_out, Y, correct_dict, total_dict)
-        show(test_X, test_mask, test_Y, data)
+        main.show(test_X, test_mask, test_Y, data)
 
     lan2language = {}
     with open('../data/wili-2018/labels.csv', 'r') as f:
@@ -320,7 +320,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    print_csv()
+    # print_csv()
 
     # Train the model
     # retrain(args)
@@ -328,11 +328,11 @@ if __name__ == "__main__":
     # args.PATH should be the no lambda model
     acc_per_lan = evaluate(args)
 
-    args.PATH = 'models/model__b128_h128_l2_s42_it20000_k35_Mon_Oct_7_11:30:12_2019' # this is lambda model
-    lambda_acc_per_lan = evaluate(args)
-
-    baseline_acc_per_lan = baseline.unigram_baseline(args)
-
-    barplot_languages(acc_per_lan, baseline_acc_per_lan, lambda_acc_per_lan)
+    # args.PATH = 'models/model__b128_h128_l2_s42_it20000_k35_Mon_Oct_7_11:30:12_2019' # this is lambda model
+    # lambda_acc_per_lan = evaluate(args)
+    #
+    # baseline_acc_per_lan = baseline.unigram_baseline(args)
+    #
+    # barplot_languages(acc_per_lan, baseline_acc_per_lan, lambda_acc_per_lan)
 
     save_to_csv(acc_per_lan, baseline_acc_per_lan, lambda_acc_per_lan)

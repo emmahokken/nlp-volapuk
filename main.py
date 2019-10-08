@@ -172,20 +172,18 @@ def show(x, mask, target, data):
     if mask is not None:
         keys = [key for key in data.char2int]
 
-        for l in range(len(target)):
-            # print(f'\n{}')
+        for l in range(2):
             mask_par = ''
             orig_par = ''
             par = ''
-            if data.int2lan[target[l].item()] == 'mri':
-                for i,j in zip(x[l,:],mask[l,:]):
-                    if keys[j] == keys[i]:
-                        par = par + colored(keys[i], 'green')
-                    else:
-                        par = par + colored(keys[i], 'red')
+            for i,j in zip(x[l,:],mask[l,:]):
+                if keys[j] == keys[i]:
+                    par = par + colored(keys[i], 'green')
+                else:
+                    par = par + colored(keys[i], 'red')
 
-                print(f'batch {l}')
-                print(par)
+            print(f'batch {l}')
+            print(par)
 
     else:
         print(x)
