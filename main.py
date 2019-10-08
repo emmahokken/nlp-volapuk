@@ -200,7 +200,7 @@ def train(args):
             test_out, test_mask, test_mask_loss = model.forward(test_X, (torch.ones(args.batch_size)*args.batch_size).long())
             test_loss = criterion(test_out, test_Y)
             test_loss = test_loss + lambd * test_mask_loss/args.batch_size
-
+            # print(test_mask_loss)
             # get max indices for accuracy
             _, ind = torch.max(test_out, axis=1)
             acc = (ind == test_Y).float().mean()
@@ -214,7 +214,7 @@ def train(args):
             losses.append(test_loss.item())
             steps.append(i)
 
-            show(test_X, test_mask, data)
+            # show(test_X, test_mask, data)
 
             with open(f'csv/csv_{modelname_id}.csv','a') as f:
                 # fd.write()

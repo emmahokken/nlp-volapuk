@@ -122,13 +122,13 @@ def evaluate(args):
 
     print(acc_per_lan)
 
-    baseline_acc_per_lan = baseline.unigram_baseline(args)
+    # baseline_acc_per_lan = baseline.unigram_baseline(args)
 
     # barplot_languages(acc_per_lan, baseline_acc_per_lan)
-    barplot_languages(acc_per_lan, baseline_acc_per_lan, acc_per_lan)
+    # barplot_languages(acc_per_lan, baseline_acc_per_lan, acc_per_lan)
     # plot_languages(acc_per_lan)
 
-    return acc_per_lan, baseline_acc_per_lan
+    return acc_per_lan#, baseline_acc_per_lan
 
 def plot_languages(acc_per_lan):
     tenners = []
@@ -235,7 +235,7 @@ def barplot_languages(acc_per_lan, baseline_acc_per_lan, lambda_acc_per_lan):
         # plt.xticks(y_pos, keys, rotation='vertical', fontsize=10)
 
         ax.plot(y_pos, n_vals, color='b',label='LSTM-model')
-        # ax.plot(y_pos-w, n_vals, width=w, color='b', align='center',label='LSTM-model')
+        # ax.bar(y_pos-w, n_vals, width=w, color='b', align='center',label='LSTM-model')
         ax.bar(y_pos, n_lambda_vals, width=w, color='g', align='center',label='\u03BB-LSTM-model')
         ax.bar(y_pos+w, n_base_vals, width=w, color='r', align='center',label='BoC')
         plt.xticks(y_pos, n_keys, rotation='vertical', fontsize=7)
@@ -250,7 +250,63 @@ def barplot_languages(acc_per_lan, baseline_acc_per_lan, lambda_acc_per_lan):
     plt.scatter(y_pos, vals, color='b',label='LSTM-model')
     plt.scatter(y_pos, lambda_vals, color='g',label='\u03BB-LSTM-model')
     plt.scatter(y_pos, base_vals, color='r',label='BoC')
+    plt.xticks(y_pos, keys, rotation='vertical', fontsize=7)
     plt.show()
+
+def save_to_csv(acc_per_lan, baseline_acc_per_lan, lambda_acc_per_lan):
+    keys = [key for key, val in reversed(sorted(acc_per_lan.items(), key=operator.itemgetter(1)))]
+    vals = [val for key, val in reversed(sorted(acc_per_lan.items(), key=operator.itemgetter(1)))]
+    lambda_vals = [lambda_acc_per_lan[key] for key in keys]
+    base_vals = [baseline_acc_per_lan[key] for key in keys]
+
+    with open('evaluation_data.csv', mode='w') as f:
+        writer = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        writer.writerow(['LSTM-model', '\u03BB-LSTM-model', 'BoC'])
+        for i, key in enumerate(keys):
+            writer.writerow([keys[i], vals[i], lambda_vals[i], base_vals[i]])
+
+def print_csv():
+    big_table = []
+
+    boc = []
+    lstm = []
+    lambd = []
+    with open('evaluation_data.csv', mode='r') as f:
+        csv_reader = csv.reader(f, delimiter=',')
+        for ind, row in enumerate(csv_reader):
+            try:
+                boc.append(float(row[-1]))
+                lambd.append(float(row[-2]))
+                lstm.append(float(row[-3]))
+            except:
+                pass
+            # line = ''
+            for i, r in enumerate(row):
+                try:
+                    row[i] = str(round(float(r),3))
+                except:
+                    row[i] = r
+            # print(ind, ' & '.join(row), '\\\\')
+            big_table.append(' & '.join(row))
+    # print(len(big_table[1:74]),len(big_table[74:]))
+    # for b1, b2 in zip(big_table[1:74], big_table[74:]):
+    #     print(b1, '&', b2, '\\\\')
+    big1 = big_table[1:50]
+    big2 = big_table[50:99]
+    big3 = big_table[99:]
+    big3.append(f'Total & {np.mean(lstm[1:])} & {np.mean(lambd[1:])} & {np.mean(boc[1:])}')
+    print(big3)
+    # print(len(big1), len(big2), len(big3))
+    for b1, b2, b3 in zip(big1, big2, big3):
+        print(b1, '&', b2, '&', b3, '\\\\')
+    # print(len(big_table[1:50]),len(big_table[50:99]),len(big_table[99:]))
+    # for b1, b2, b3 in zip(big_table[1:49], big_table[49:49*2], big_table[49*2:]):
+    #     print(b1, '&', b2, '&', b3, '\\\\')
+    # print(np.argmax(boc[1:]),max(boc[1:]))
+    # print('boc  ', np.mean(boc[1:]))
+    # print('lambd', np.mean(lambd[1:]))
+    # print('lstm ', np.mean(lstm[1:]))
+
 
 
 def accuracy(predictions, targets, correct_dict, total_dict):
@@ -292,13 +348,19 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    print_csv()
+
     # Train the model
     # retrain(args)
 
     # args.PATH should be the no lambda model
-    acc_per_lan, baseline_acc_per_lan = evaluate(args)
+    acc_per_lan = evaluate(args)
 
     args.PATH = 'models/model__b128_h128_l2_s42_it20000_k35_Mon_Oct_7_11:30:12_2019' # this is lambda model
-    lambda_acc_per_lan, baseline_acc_per_lan = evaluate(args)
+    lambda_acc_per_lan = evaluate(args)
+
+    baseline_acc_per_lan = baseline.unigram_baseline(args)
 
     barplot_languages(acc_per_lan, baseline_acc_per_lan, lambda_acc_per_lan)
+
+    save_to_csv(acc_per_lan, baseline_acc_per_lan, lambda_acc_per_lan)

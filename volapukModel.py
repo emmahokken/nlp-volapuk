@@ -29,7 +29,7 @@ class VolapukModel(nn.Module):
 
     def forward(self, x, seq_lengths):
 
-        importance_sampler = True
+        importance_sampler = False#True
         # x = self.bilinear(x)
 
         # embed = torch.nn.functional.one_hot(x, self.vocab_size).float()
@@ -63,6 +63,7 @@ class VolapukModel(nn.Module):
             embed = self.embedding(x)
         else:
             mask_x = None
+            mask = torch.tensor(0)
 
 
         # stop
