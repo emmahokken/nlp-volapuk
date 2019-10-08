@@ -1,17 +1,11 @@
 import random
 from collections import Counter
-import os
-import urllib
 
 class DataSet:
     def __init__(self, xfile="/data/wili-2018/x_train.txt",
                        yfile="/data/wili-2018/y_train.txt",
                        x_test="/data/wili-2018/x_test.txt",
                        y_test="/data/wili-2018/y_test.txt"):
-
-        if not os.path.isfile(xfile):
-            url = 'https://zenodo.org/record/841984/files/wili-2018.zip?download=1'
-            urllib.urlretrieve(url)
 
         self.par2lan = {}
         self.test_par2lan = {}
