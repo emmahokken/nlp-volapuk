@@ -15,6 +15,8 @@ from vae import VAE
 from termcolor import colored
 import csv
 
+from evaluate import evaluate
+
 def get_X_Y_from_batch(batch, targets, data, device):
     batch_x = []
     batch_y = []
@@ -56,7 +58,7 @@ def train(args):
     # print('########## K           ##########')
     # print('#################################\n')
 
-    params_id = '_b'+str(args.batch_size)+'_h'+str(args.num_hidden)+'_l'+str(args.num_layers)+'_s'+str(args.seed)+'_it'+str(args.training_steps)+'_k'+str(args.k)
+    params_id = '_b'+str(args.batch_size)+'_h'+str(args.num_hidden)+'_l'+str(args.num_layers)+'_s'+str(args.seed)+'_it'+str(args.training_steps)
 
     timestamp = time.asctime(time.localtime(time.time())).replace('  ',' ').replace(' ','_')
 
@@ -107,7 +109,7 @@ def train(args):
 
         # Get batch and targets, however not in correct format
         batch, targets = data.get_next_batch(args.batch_size)
-        X,Y = get_X_Y_from_batch(batch, targets, data, args.device)
+        X,Y = get_X_Y_from_batch(batch, targets, data, device)
 
         lambd = 0.1
         out, _, mask_loss = model.forward(X, (torch.ones(args.batch_size)*args.batch_size).long()) # lstm from dl
@@ -122,7 +124,7 @@ def train(args):
             # Get batch from test data
             model.eval()
             test_batch, test_targets = data.get_next_test_batch(args.batch_size)
-            test_X, test_Y = get_X_Y_from_batch(test_batch, test_targets, data, args.device)
+            test_X, test_Y = get_X_Y_from_batch(test_batch, test_targets, data, device)
             test_out, test_mask, test_mask_loss = model.forward(test_X, (torch.ones(args.batch_size)*args.batch_size).long())
             test_loss = criterion(test_out, test_Y)
             test_loss = test_loss + lambd * test_mask_loss/args.batch_size
@@ -203,7 +205,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_layers', type=int, default=2, help='Number of layers in the model')
 
     parser.add_argument('--batch_size', type=int, default=128, help='Number of examples to process in a batch')
-    parser.add_argument('--training_steps', type=int, default=1000, help='Number of training steps')
+    parser.add_argument('--training_steps', type=int, default=20000, help='Number of training steps')
     parser.add_argument('--learning_rate', type=float, default=0.01, help='Learning rate')
     parser.add_argument('--momentum', type=float, default=0.95, help='Momentum')
 
@@ -223,5 +225,16 @@ if __name__ == "__main__":
     # Train the model
     if args.eval:
         data = DataSet()
+        acc_per_lan = evaluate(args)
+
+        args.PATH = 'models/model__b128_h128_l2_s42_it20000_k35_Mon_Oct_7_11:30:12_2019' # this is lambda model
+        lambda_acc_per_lan = evaluate(args)
+
+        baseline_acc_per_lan = baseline.unigram_baseline(args)
+
+        barplot_languages(acc_per_lan, baseline_acc_per_lan, lambda_acc_per_lan)
+
+        save_to_csv(acc_per_lan, baseline_acc_per_lan, lambda_acc_per_lan)
+        
     else:
         train(args)
