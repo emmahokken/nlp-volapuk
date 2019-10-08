@@ -185,8 +185,8 @@ def show(x, mask, target, data):
             print(f'batch {l}')
             print(par)
 
-    else:
-        print(x)
+    # else:
+    #     print(x)
 
 
 def accuracy(predictions, targets):

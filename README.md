@@ -23,7 +23,7 @@ The code for training the network is located in `main.py`. The program takes on 
 <br/>
 `--device`: Training device 'cpu' or 'cuda:. Default: cuda:0 
 <br/>
-`--load_PATH`: Load model from certain path. Default: None 
+`--load_PATH`: Load model from certain path. Default: None. Please either include 'models/model\_lambda0.1' or 'models/model\_LSTM'
 <br/>
 `--seed`: Set seed to guarantee validity of results. Default: 42
 <br/>

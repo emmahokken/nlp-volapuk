@@ -35,9 +35,13 @@ def evaluate(args):
             hidden_size=args.num_hidden, num_layers=args.num_layers, batch_first=True, importance_sampler=args.importance_sampler).to(device=device)
 
     print('\n\n', args.importance_sampler)
-    if args.load_model:
-        print(f'Load model {args.PATH}.p')
-        model.load_state_dict(torch.load(f'{args.PATH}.p', map_location=device))
+    # if args.load_model:
+    try:
+        print(f'Load model {args.load_PATH}.p')
+        model.load_state_dict(torch.load(f'{args.load_PATH}.p', map_location=device))
+    except FileNotFoundError:
+        print('please include path')
+        return
 
     correct_dict = {data.lan2int[lan]: torch.zeros(len(data.languages)) for lan in data.languages}
     total_dict = {data.lan2int[lan]: torch.zeros(len(data.languages)) for lan in data.languages}
@@ -89,7 +93,7 @@ def evaluate(args):
 
 
         test_batch, test_targets = data.get_next_test_batch(args.batch_size)
-        test_X, test_Y = main.get_X_Y_from_batch(test_batch, test_targets, data, args.device)
+        test_X, test_Y = main.get_X_Y_from_batch(test_batch, test_targets, data, device)
         test_out, test_mask, test_mask_loss = model.forward(test_X, (torch.ones(args.batch_size)*args.batch_size).long())
 
         acc, correct_dict, total_dict = accuracy(test_out, Y, correct_dict, total_dict)
@@ -309,7 +313,7 @@ if __name__ == "__main__":
     parser.add_argument('--momentum', type=float, default=0.95, help='Momentum')
 
     parser.add_argument('--device', type=str, default="cuda:0", help="Training device 'cpu' or 'cuda:0'")
-    parser.add_argument('--PATH', type=str, default="models/model", help="Model name to save")
+    parser.add_argument('--load_PATH', type=str, default="models/model", help="Model name to save")
     parser.add_argument('--load_model', type=bool, default=True, help="Load model from PATH")
 
     parser.add_argument('--seed', type=int, default=42, help="Set seed")
@@ -335,4 +339,4 @@ if __name__ == "__main__":
     #
     # barplot_languages(acc_per_lan, baseline_acc_per_lan, lambda_acc_per_lan)
 
-    save_to_csv(acc_per_lan, baseline_acc_per_lan, lambda_acc_per_lan)
+    # save_to_csv(acc_per_lan, baseline_acc_per_lan, lambda_acc_per_lan)
