@@ -15,7 +15,9 @@ from vae import VAE
 from termcolor import colored
 import csv
 
-from evaluate import evaluate
+import os
+
+import evaluate
 
 def get_X_Y_from_batch(batch, targets, data, device):
     batch_x = []
@@ -105,6 +107,10 @@ def train(args):
     print('###################################')
     print(data.languages)
 
+
+    if not os.path.exists('csv'):
+        os.makedirs('csv')
+        
     for i in tqdm(range(args.training_steps)):
 
         # Get batch and targets, however not in correct format
@@ -130,7 +136,7 @@ def train(args):
             test_loss = test_loss + lambd * test_mask_loss/args.batch_size
 
             # Get max indices for accuracy
-            _, ind = torch.max(test_out, axis=1)
+            _, ind = torch.max(test_out, dim=1)
             acc = (ind == test_Y).float().mean()
 
             # Print current data
@@ -144,6 +150,7 @@ def train(args):
 
             if args.importance_sampler:
                 show(test_X, test_mask, data)
+
 
             with open(f'csv/csv_{modelname_id}.csv','a') as f:
                 writer = csv.writer(f)
@@ -224,17 +231,6 @@ if __name__ == "__main__":
 
     # Train the model
     if args.eval:
-        data = DataSet()
-        acc_per_lan = evaluate(args)
-
-        args.PATH = 'models/model__b128_h128_l2_s42_it20000_k35_Mon_Oct_7_11:30:12_2019' # this is lambda model
-        lambda_acc_per_lan = evaluate(args)
-
-        baseline_acc_per_lan = baseline.unigram_baseline(args)
-
-        barplot_languages(acc_per_lan, baseline_acc_per_lan, lambda_acc_per_lan)
-
-        save_to_csv(acc_per_lan, baseline_acc_per_lan, lambda_acc_per_lan)
-        
+        evaluate.evaluate(args)
     else:
         train(args)
