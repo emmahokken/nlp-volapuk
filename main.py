@@ -4,14 +4,12 @@ import numpy as np
 import torch
 import argparse
 from collections import Counter
-from model import modelRNN
 import torch.nn as nn
 import torch.optim as optim
 from volapukModel import VolapukModel
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import time
-from vae import VAE
 from termcolor import colored
 import csv
 
@@ -110,7 +108,7 @@ def train(args):
 
     if not os.path.exists('csv'):
         os.makedirs('csv')
-        
+
     for i in tqdm(range(args.training_steps)):
 
         # Get batch and targets, however not in correct format

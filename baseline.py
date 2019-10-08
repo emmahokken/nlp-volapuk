@@ -4,7 +4,6 @@ import numpy as np
 import torch
 import argparse
 from collections import Counter
-from model import modelRNN
 import torch.nn as nn
 from scipy.spatial import distance
 from nltk import bigrams
